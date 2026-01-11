@@ -5,8 +5,8 @@ Config.CheckEMS = true -- Si está en true, solo funciona cuando no hay EMS acti
 Config.RequiredEMSCount = 0 -- Número mínimo de EMS para desactivar el NPC
 Config.HealPrice = 500 -- Precio por curación
 Config.HealTime = 5000 -- Tiempo de curación en milisegundos
-Config.UseProgressBar = true -- Usar barra de progreso (requiere progressbar)
-Config.UseTarget = true -- Usar qb-target o drawtext3D
+Config.UseProgressBar = true -- Usar barra de progreso (soporta ox_lib o espera simple)
+Config.UseTarget = true -- Usar sistema de target (ox_target, qtarget) o drawtext3D
 
 Config.Locations = {
     {

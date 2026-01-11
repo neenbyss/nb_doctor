@@ -2,12 +2,12 @@ fx_version 'cerulean'
 game 'gta5'
 
 name 'nb-doctor'
-description 'NPC Doctor for QBCore'
+description 'NPC Doctor for ESX'
 author 'NeenByss'
 version '1.0.0'
 
 shared_scripts {
-    '@qb-core/shared/locale.lua',
+    '@es_extended/imports.lua',
     'config.lua'
 }
 

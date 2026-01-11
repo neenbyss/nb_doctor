@@ -1,4 +1,4 @@
-local QBCore = exports['qb-core']:GetCoreObject()
+local ESX = exports["es_extended"]:getSharedObject()
 local npcs = {}
 local blips = {}
 local isHealing = false
@@ -25,20 +25,34 @@ local function CreateNPCDoctor(location)
     npcs[location.id] = npc
     
     if Config.UseTarget then
-        exports['qb-target']:AddTargetEntity(npc, {
-            options = {
+        if GetResourceState('ox_target') == 'started' then
+            exports.ox_target:addLocalEntity(npc, {
                 {
-                    type = 'client',
+                    name = 'nb_doctor_heal',
                     event = 'nb-doctor:client:requestHeal',
                     icon = 'fas fa-user-md',
                     label = 'Solicitar tratamiento ($' .. Config.HealPrice .. ')',
                     canInteract = function()
                         return not isHealing
-                    end
+                    end,
+                    distance = 2.5
                 }
-            },
-            distance = 2.5
-        })
+            })
+        elseif GetResourceState('qtarget') == 'started' then
+            exports.qtarget:AddTargetEntity(npc, {
+                options = {
+                    {
+                        event = 'nb-doctor:client:requestHeal',
+                        icon = 'fas fa-user-md',
+                        label = 'Solicitar tratamiento ($' .. Config.HealPrice .. ')',
+                        canInteract = function()
+                            return not isHealing
+                        end
+                    }
+                },
+                distance = 2.5
+            })
+        end
     end
     
     return npc
@@ -62,7 +76,7 @@ local function CreateBlips()
 end
 
 local function CheckEMSActive(cb)
-    QBCore.Functions.TriggerCallback('nb-doctor:server:getEMSCount', function(count)
+    ESX.TriggerServerCallback('nb-doctor:server:getEMSCount', function(count)
         cb(count)
     end)
 end
@@ -72,19 +86,34 @@ RegisterNetEvent('nb-doctor:client:requestHeal', function()
     
     CheckEMSActive(function(emsCount)
         if Config.CheckEMS and emsCount > Config.RequiredEMSCount then
-            QBCore.Functions.Notify(Config.Notifications.emsActive, 'error')
+            ESX.ShowNotification(Config.Notifications.emsActive, 'error')
             return
         end
         
-        QBCore.Functions.TriggerCallback('nb-doctor:server:checkMoney', function(hasMoney)
+        ESX.TriggerServerCallback('nb-doctor:server:checkMoney', function(hasMoney)
             if hasMoney then
                 StartHealing()
             else
-                QBCore.Functions.Notify(Config.Notifications.noMoney, 'error')
+                ESX.ShowNotification(Config.Notifications.noMoney, 'error')
             end
         end)
     end)
 end)
+
+function FinishHealing(playerPed, closestNPC)
+    TriggerServerEvent('nb-doctor:server:heal')
+    isHealing = false
+    ClearPedTasks(playerPed)
+    ClearPedTasks(closestNPC)
+    ESX.ShowNotification(Config.Notifications.healed)
+end
+
+function CancelHealing(playerPed, closestNPC)
+    isHealing = false
+    ClearPedTasks(playerPed)
+    ClearPedTasks(closestNPC)
+    ESX.ShowNotification(Config.Notifications.cancelled, 'error')
+end
 
 function StartHealing()
     isHealing = true
@@ -121,31 +150,32 @@ function StartHealing()
     TaskPlayAnim(playerPed, Config.Animations.player.dict, Config.Animations.player.anim, 8.0, -8.0, Config.Animations.player.duration, 1, 0, false, false, false)
     
     if Config.UseProgressBar then
-        QBCore.Functions.Progressbar('healing', Config.Notifications.healing, Config.HealTime, false, false, {
-            disableMovement = true,
-            disableCarMovement = true,
-            disableMouse = false,
-            disableCombat = true,
-        }, {}, {}, {}, function() -- Completado
-            TriggerServerEvent('nb-doctor:server:heal')
-            isHealing = false
-            ClearPedTasks(playerPed)
-            ClearPedTasks(closestNPC)
-            QBCore.Functions.Notify(Config.Notifications.healed, 'success')
-        end, function() -- Cancelado
-            isHealing = false
-            ClearPedTasks(playerPed)
-            ClearPedTasks(closestNPC)
-            QBCore.Functions.Notify(Config.Notifications.cancelled, 'error')
-        end)
+        if GetResourceState('ox_lib') == 'started' then
+             if lib.progressBar({
+                duration = Config.HealTime,
+                label = Config.Notifications.healing,
+                useWhileDead = false,
+                canCancel = true,
+                disable = {
+                    move = true,
+                    car = true,
+                    mouse = false,
+                    combat = true,
+                },
+            }) then 
+                FinishHealing(playerPed, closestNPC)
+            else 
+                CancelHealing(playerPed, closestNPC)
+            end
+        else
+            ESX.ShowNotification(Config.Notifications.healing)
+            Wait(Config.HealTime)
+            FinishHealing(playerPed, closestNPC)
+        end
     else
-        QBCore.Functions.Notify(Config.Notifications.healing, 'primary')
+        ESX.ShowNotification(Config.Notifications.healing)
         Wait(Config.HealTime)
-        TriggerServerEvent('nb-doctor:server:heal')
-        isHealing = false
-        ClearPedTasks(playerPed)
-        ClearPedTasks(closestNPC)
-        QBCore.Functions.Notify(Config.Notifications.healed, 'success')
+        FinishHealing(playerPed, closestNPC)
     end
 end
 
@@ -198,16 +228,21 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler('onResourceStop', function(resourceName)
-    if (GetCurrentResourceName() ~= resourceName) then
-        return
-    end
-    
+RegisterNetEvent('nb-doctor:client:reload', function()
     for _, npc in pairs(npcs) do
-        DeletePed(npc)
+        DeleteEntity(npc)
     end
+    npcs = {}
     
     for _, blip in pairs(blips) do
         RemoveBlip(blip)
+    end
+    blips = {}
+    
+    Wait(500)
+    
+    CreateBlips()
+    for _, location in pairs(Config.Locations) do
+        CreateNPCDoctor(location)
     end
 end)
