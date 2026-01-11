@@ -49,7 +49,17 @@ RegisterNetEvent('nb-doctor:server:heal', function()
         xPlayer.removeAccountMoney('bank', Config.HealPrice)
     end
     
-    TriggerClientEvent('esx_ambulancejob:revive', src)
+    if GetResourceState('ars_ambulancejob') == 'started' then
+        TriggerClientEvent('ars_ambulancejob:healPlayer', src, { revive = true })
+    elseif GetResourceState('esx_ambulancejob') == 'started' then
+        TriggerClientEvent('esx_ambulancejob:revive', src)
+    elseif GetResourceState('wasabi_ambulance') == 'started' then
+        TriggerClientEvent('wasabi_ambulance:revive', src)
+    else
+        -- Fallback básico si no se detecta ningún script de ambulancia conocido
+        TriggerClientEvent('esx_ambulancejob:revive', src)
+        print('^3[nb-doctor] Advertencia: No se detectó un script de ambulancia conocido, usando evento por defecto de ESX.^0')
+    end
     
     if Config.EnableLogs then
         print('[nb-doctor] ' .. GetPlayerName(src) .. ' (ID: ' .. src .. ') fue curado por el NPC Doctor por $' .. Config.HealPrice)
