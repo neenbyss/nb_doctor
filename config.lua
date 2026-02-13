@@ -3,6 +3,7 @@ Config = {}
 -- Configuración general
 Config.CheckEMS = true -- Si está en true, solo funciona cuando no hay EMS activos
 Config.RequiredEMSCount = 0 -- Número mínimo de EMS para desactivar el NPC
+Config.OnlyWhenInjured = true -- Si está en true, solo se puede solicitar tratamiento cuando tienes vida baja o estás muerto
 Config.HealPrice = 500 -- Precio por curación
 Config.HealTime = 5000 -- Tiempo de curación en milisegundos
 Config.UseProgressBar = true -- Usar barra de progreso (soporta ox_lib o espera simple)
@@ -11,7 +12,7 @@ Config.UseTarget = true -- Usar sistema de target (ox_target, qtarget) o drawtex
 Config.Locations = {
     {
         id = 1,
-        coords = vector4(-678.3743, 319.2318, 83.0831, 158.8327),
+        coords = vector4(1145.1332, -1529.9188, 35.3805, 169.6073),
         model = 's_m_m_doctor_01',
         scenario = 'WORLD_HUMAN_CLIPBOARD',
         blip = {
@@ -39,6 +40,7 @@ Config.Animations = {
 
 Config.Notifications = {
     noMoney = 'No tienes suficiente dinero',
+    noNeedHeal = 'No necesitas tratamiento médico',
     healing = 'El doctor te está curando...',
     healed = 'Has sido curado completamente',
     emsActive = 'Hay paramédicos disponibles, contacta con ellos',

@@ -3,6 +3,15 @@ local npcs = {}
 local blips = {}
 local isHealing = false
 
+local function NeedsHealing()
+    if not Config.OnlyWhenInjured then return true end
+    local playerPed = PlayerPedId()
+    if IsEntityDead(playerPed) then return true end
+    local health = GetEntityHealth(playerPed)
+    local maxHealth = GetEntityMaxHealth(playerPed)
+    return health < maxHealth
+end
+
 local function CreateNPCDoctor(location)
     local model = GetHashKey(location.model)
     
@@ -33,7 +42,7 @@ local function CreateNPCDoctor(location)
                     icon = 'fas fa-user-md',
                     label = 'Solicitar tratamiento ($' .. Config.HealPrice .. ')',
                     canInteract = function()
-                        return not isHealing
+                        return not isHealing and NeedsHealing()
                     end,
                     distance = 2.5
                 }
@@ -46,7 +55,7 @@ local function CreateNPCDoctor(location)
                         icon = 'fas fa-user-md',
                         label = 'Solicitar tratamiento ($' .. Config.HealPrice .. ')',
                         canInteract = function()
-                            return not isHealing
+                            return not isHealing and NeedsHealing()
                         end
                     }
                 },
@@ -83,7 +92,11 @@ end
 
 RegisterNetEvent('nb-doctor:client:requestHeal', function()
     if isHealing then return end
-    
+    if not NeedsHealing() then
+        ESX.ShowNotification(Config.Notifications.noNeedHeal, 'info')
+        return
+    end
+
     CheckEMSActive(function(emsCount)
         if Config.CheckEMS and emsCount > Config.RequiredEMSCount then
             ESX.ShowNotification(Config.Notifications.emsActive, 'error')
@@ -151,7 +164,7 @@ function StartHealing()
     
     if Config.UseProgressBar then
         if GetResourceState('ox_lib') == 'started' then
-             if lib.progressBar({
+            if exports.ox_lib:progressBar({
                 duration = Config.HealTime,
                 label = Config.Notifications.healing,
                 useWhileDead = false,
@@ -162,9 +175,9 @@ function StartHealing()
                     mouse = false,
                     combat = true,
                 },
-            }) then 
+            }) then
                 FinishHealing(playerPed, closestNPC)
-            else 
+            else
                 CancelHealing(playerPed, closestNPC)
             end
         else
@@ -175,6 +188,9 @@ function StartHealing()
     else
         ESX.ShowNotification(Config.Notifications.healing)
         Wait(Config.HealTime)
+        TriggerEvent('ars_ambulancejob:healPlayer', { revive = true }) 
+        StopScreenEffect('DeathFailOut') 
+        AnimpostfxStopAll()
         FinishHealing(playerPed, closestNPC)
     end
 end
@@ -204,7 +220,7 @@ CreateThread(function()
                 local npcCoords = GetEntityCoords(npc)
                 local distance = #(playerCoords - npcCoords)
                 
-                if distance < 3.0 and not isHealing then
+                if distance < 3.0 and not isHealing and NeedsHealing() then
                     sleep = 0
                     DrawText3D(npcCoords + vector3(0, 0, 1.0), Config.NPCDialog.greeting)
                     DrawText3D(npcCoords + vector3(0, 0, 0.8), Config.NPCDialog.accept)
